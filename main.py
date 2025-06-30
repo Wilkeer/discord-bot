@@ -155,41 +155,24 @@ farm_view = FarmView()
 
 # --------------------- EVENTOS E COMANDOS ---------------------
 
+# Variáveis globais para as views
+registro_view = None
+farm_view = None
+
 @bot.event
 async def on_ready():
-    print(f"🤖 Bot conectado como {bot.user}")
+    global registro_view, farm_view
+
+    registro_view = RegistroView()
+    farm_view = FarmView()
+
     bot.add_view(registro_view)
     bot.add_view(farm_view)
+
+    print(f"🤖 Bot conectado como {bot.user}")
+
     try:
         await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
         print("📌 Comandos sincronizados com sucesso.")
     except Exception as e:
         print(f"Erro ao sincronizar comandos: {e}")
-
-
-@bot.tree.command(name="setar", description="Reenvia o formulário de registro", guild=discord.Object(id=GUILD_ID))
-async def setar(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("🚫 Você não tem permissão para usar este comando.", ephemeral=True)
-        return
-
-    embed = discord.Embed(
-        title="Registro Moto Clube",
-        description="📝 Clique no botão abaixo para se registrar no Moto Clube.",
-        color=discord.Color.red()
-    )
-    embed.set_image(url="https://i.imgur.com/RcUNBIf.jpeg")
-    await interaction.response.send_message(embed=embed, view=registro_view)
-
-
-@bot.tree.command(name="farm", description="Inicia o sistema de farm", guild=discord.Object(id=GUILD_ID))
-async def farm(interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="🌾 Sistema de Farm",
-        description="Clique no botão abaixo para criar sua pasta de farm.",
-        color=discord.Color.green()
-    )
-    await interaction.response.send_message(embed=embed, view=farm_view)
-
-
-bot.run(TOKEN)
