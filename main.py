@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-import re
 import os
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -93,7 +92,6 @@ class FarmView(discord.ui.View):
 
         guild = interaction.guild
         member = interaction.user
-        bot_member = guild.me
 
         cargo_farm_ok = discord.utils.get(guild.roles, name="Farm OK")
         if cargo_farm_ok in member.roles:
@@ -110,9 +108,9 @@ class FarmView(discord.ui.View):
         nova_categoria = await guild.create_category_channel(nome_categoria, category=categoria_mae)
 
         cargo_ids_permitidos = [
-            1234567890,  # Substitua pelos IDs reais
-            9876543210,
-            # ...
+            CARGO_00_ID,
+            CARGO_SUBLIDER_ID,
+            CARGO_GERENTE_FARM_ID,
         ]
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -125,7 +123,6 @@ class FarmView(discord.ui.View):
                 overwrites[cargo] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
 
         canal_farm = await nova_categoria.create_text_channel("📋・meta-farm", overwrites=overwrites)
-        await interaction.followup.send("✅ Canal criado com sucesso.", ephemeral=True)
 
         embed = discord.Embed(
             title="📋 Meta de Farm",
@@ -151,14 +148,18 @@ class FarmView(discord.ui.View):
         await interaction.followup.send("✅ Tudo pronto! Boa sorte com a farm. 🏍️", ephemeral=True)
 
 
+# Instâncias fixas das views para evitar erros de escopo
+registro_view = RegistroView()
+farm_view = FarmView()
+
 
 # --------------------- EVENTOS E COMANDOS ---------------------
 
 @bot.event
 async def on_ready():
     print(f"🤖 Bot conectado como {bot.user}")
-    bot.add_view(RegistroView())
-    bot.add_view(FarmView())
+    bot.add_view(registro_view)
+    bot.add_view(farm_view)
     try:
         await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
         print("📌 Comandos sincronizados com sucesso.")
@@ -178,7 +179,7 @@ async def setar(interaction: discord.Interaction):
         color=discord.Color.red()
     )
     embed.set_image(url="https://i.imgur.com/RcUNBIf.jpeg")
-    await interaction.response.send_message(embed=embed, view=RegistroView())
+    await interaction.response.send_message(embed=embed, view=registro_view)
 
 
 @bot.tree.command(name="farm", description="Inicia o sistema de farm", guild=discord.Object(id=GUILD_ID))
@@ -188,6 +189,7 @@ async def farm(interaction: discord.Interaction):
         description="Clique no botão abaixo para criar sua pasta de farm.",
         color=discord.Color.green()
     )
-    await interaction.response.send_message(embed=embed, view=FarmView())
+    await interaction.response.send_message(embed=embed, view=farm_view)
+
 
 bot.run(TOKEN)
