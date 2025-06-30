@@ -111,12 +111,14 @@ class FarmView(discord.ui.View):
             canal = await guild.create_text_channel(
                 name=nome_canal,
                 category=categoria,
-                overwrites={
-                    guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                    member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
-                    guild.get_role(CARGO_00_ID): discord.PermissionOverwrite(view_channel=True),
-                    guild.get_role(CARGO_SUBLIDER_ID): discord.PermissionOverwrite(view_channel=True),
-                    guild.get_role(CARGO_GERENTE_FARM_ID): discord.PermissionOverwrite(view_channel=True),
+                bot_member = guild.me  # o próprio bot
+                overwrites = {
+                        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                        member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+                        guild.get_role(CARGO_00_ID): discord.PermissionOverwrite(view_channel=True),
+                        guild.get_role(CARGO_SUBLIDER_ID): discord.PermissionOverwrite(view_channel=True),
+                        guild.get_role(CARGO_GERENTE_FARM_ID): discord.PermissionOverwrite(view_channel=True),
+                        bot_member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, manage_messages=True)
                 }
             )
             print("✅ Canal criado com sucesso.")
