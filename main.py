@@ -97,11 +97,8 @@ class FarmView(discord.ui.View):
             return
 
         apelido = member.nick or member.name
-        # Remove símbolos e acentos indesejados, substitui espaços por hífen, e remove hífens duplicados
-        apelido_formatado = re.sub(r'[^a-zA-Z0-9\-]', '-', apelido)  # troca símbolos por hífen
-        apelido_formatado = re.sub(r'-+', '-', apelido_formatado)    # remove hífens duplicados
-        apelido_formatado = apelido_formatado.strip('-')             # remove hífen no início/fim
-
+        apelido_formatado = re.sub(r'[^a-zA-Z0-9\-]', '-', apelido)
+        apelido_formatado = re.sub(r'-+', '-', apelido_formatado).strip('-')
         nome_canal = f"📁・farm-{apelido_formatado}".lower()
 
         categoria = guild.get_channel(CATEGORIA_FARM_ID)
@@ -110,6 +107,7 @@ class FarmView(discord.ui.View):
             return
 
         try:
+            # CRIA O CANAL
             canal = await guild.create_text_channel(
                 name=nome_canal,
                 category=categoria,
@@ -122,24 +120,32 @@ class FarmView(discord.ui.View):
                 }
             )
 
+            # ENVIA MENSAGEM E FIXA
             embed = discord.Embed(
-            title="📋 Meta da Farm",
-            description="""Esta são suas metas de farm diário!
+                title="📋 Meta da Farm",
+                description="""Esta são suas metas de farm diário!
 
-            ✍️ Edite aqui suas metas diárias.""",
-            color=discord.Color.green(),
-            timestamp=discord.utils.utcnow()
+✍️ Edite aqui suas metas diárias.""",
+                color=discord.Color.green(),
+                timestamp=discord.utils.utcnow()
             )
             embed.set_footer(text=f"Pasta criada para: {apelido}")
             msg = await canal.send(embed=embed)
             await msg.pin()
+            print("✅ Mensagem enviada e fixada.")
 
-            await member.add_roles(guild.get_role(CARGO_FARM_OK_ID))
+            # ADICIONA CARGO FARM OK
+            cargo_ok = guild.get_role(CARGO_FARM_OK_ID)
+            await member.add_roles(cargo_ok)
+            print("✅ Cargo 'Farm OK' adicionado ao membro.")
 
+            # ESCONDE CANAL ORIGINAL
             canal_farm = guild.get_channel(CANAL_FARM_ORIGINAL_ID)
             if canal_farm:
                 await canal_farm.set_permissions(member, view_channel=False)
+                print("✅ Canal original ocultado para o membro.")
 
+            # ENVIA LOG
             canal_logs = guild.get_channel(CANAL_LOGS_ID)
             if canal_logs:
                 log_embed = discord.Embed(
@@ -153,13 +159,15 @@ class FarmView(discord.ui.View):
                 log_embed.add_field(name="📂 Canal", value=f"{canal.mention}", inline=False)
                 log_embed.set_footer(text=f"Criado por: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
                 await canal_logs.send(embed=log_embed)
+                print("✅ Log enviado com sucesso.")
 
             await interaction.response.send_message("✅ Sua pasta foi criada com sucesso!", ephemeral=True)
 
-        except discord.Forbidden:
-            await interaction.response.send_message("❌ Não tenho permissão para criar canal na categoria.", ephemeral=True)
+        except discord.Forbidden as e:
+            print(f"❌ Permissão negada: {e}")
+            await interaction.response.send_message("❌ Permissão insuficiente para concluir o processo (ver logs).", ephemeral=True)
         except Exception as e:
-            print(f"Erro ao criar canal farm: {e}")
+            print(f"❌ Erro inesperado: {e}")
             await interaction.response.send_message("❌ Ocorreu um erro ao criar sua pasta farm.", ephemeral=True)
 
 
