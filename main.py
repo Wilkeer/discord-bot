@@ -106,8 +106,8 @@ class FarmView(discord.ui.View):
             await interaction.response.send_message("❌ Categoria de farm não encontrada ou inválida.", ephemeral=True)
             return
 
-        try:
-            # CRIA O CANAL
+                try:
+            print("➡️ Tentando criar o canal de farm...")
             canal = await guild.create_text_channel(
                 name=nome_canal,
                 category=categoria,
@@ -119,8 +119,9 @@ class FarmView(discord.ui.View):
                     guild.get_role(CARGO_GERENTE_FARM_ID): discord.PermissionOverwrite(view_channel=True),
                 }
             )
+            print("✅ Canal criado com sucesso.")
 
-            # ENVIA MENSAGEM E FIXA
+            print("➡️ Enviando mensagem da meta...")
             embed = discord.Embed(
                 title="📋 Meta da Farm",
                 description="""Esta são suas metas de farm diário!
@@ -134,18 +135,17 @@ class FarmView(discord.ui.View):
             await msg.pin()
             print("✅ Mensagem enviada e fixada.")
 
-            # ADICIONA CARGO FARM OK
-            cargo_ok = guild.get_role(CARGO_FARM_OK_ID)
-            await member.add_roles(cargo_ok)
-            print("✅ Cargo 'Farm OK' adicionado ao membro.")
+            print("➡️ Adicionando cargo FARM OK...")
+            await member.add_roles(guild.get_role(CARGO_FARM_OK_ID))
+            print("✅ Cargo 'Farm OK' adicionado.")
 
-            # ESCONDE CANAL ORIGINAL
+            print("➡️ Ocultando canal original de farm...")
             canal_farm = guild.get_channel(CANAL_FARM_ORIGINAL_ID)
             if canal_farm:
                 await canal_farm.set_permissions(member, view_channel=False)
-                print("✅ Canal original ocultado para o membro.")
+                print("✅ Canal original ocultado.")
 
-            # ENVIA LOG
+            print("➡️ Enviando log da criação...")
             canal_logs = guild.get_channel(CANAL_LOGS_ID)
             if canal_logs:
                 log_embed = discord.Embed(
@@ -164,7 +164,7 @@ class FarmView(discord.ui.View):
             await interaction.response.send_message("✅ Sua pasta foi criada com sucesso!", ephemeral=True)
 
         except discord.Forbidden as e:
-            print(f"❌ Permissão negada: {e}")
+            print(f"❌ Permissão negada ao tentar: {e}")
             await interaction.response.send_message("❌ Permissão insuficiente para concluir o processo (ver logs).", ephemeral=True)
         except Exception as e:
             print(f"❌ Erro inesperado: {e}")
