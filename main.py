@@ -83,115 +83,73 @@ class RegistroView(discord.ui.View):
 
 # --------------------- FARM ---------------------
 
-class FarmView(discord.ui.View):
+class BotView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Criar Pasta Farm", style=discord.ButtonStyle.success, emoji="🌾", custom_id="botao_criar_farm")
+    @discord.ui.button(label="Criar Pasta Farm", style=discord.ButtonStyle.green, custom_id="botao_farm")
     async def criar_farm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+
         guild = interaction.guild
         member = interaction.user
+        bot_member = guild.me
 
-        if guild.get_role(CARGO_FARM_OK_ID) in member.roles:
-            await interaction.response.send_message("🚫 Você já possui uma pasta farm criada.", ephemeral=True)
+        cargo_farm_ok = discord.utils.get(guild.roles, name="Farm OK")
+        if cargo_farm_ok in member.roles:
+            await interaction.followup.send("❌ Você já tem uma pasta de farm ativa.", ephemeral=True)
             return
 
-        apelido = member.nick or member.name
-        apelido_formatado = re.sub(r'[^a-zA-Z0-9\-]', '-', apelido)
-        apelido_formatado = re.sub(r'-+', '-', apelido_formatado).strip('-')
-        nome_canal = f"📁・farm-{apelido_formatado}".lower()
-
-        categoria = guild.get_channel(CATEGORIA_FARM_ID)
-        if not isinstance(categoria, discord.CategoryChannel):
-            await interaction.response.send_message("❌ Categoria de farm não encontrada ou inválida.", ephemeral=True)
+        categoria_id = 1388315560479035402
+        categoria_mae = guild.get_channel(categoria_id)
+        if not categoria_mae or not isinstance(categoria_mae, discord.CategoryChannel):
+            await interaction.followup.send("❌ Categoria mãe inválida ou não encontrada.", ephemeral=True)
             return
+
+        nome_categoria = f"farm -> {member.display_name.lower()}"
+        nova_categoria = await guild.create_category_channel(nome_categoria, category=categoria_mae)
+
+        cargo_ids_permitidos = [
+            1234567890,  # Substitua pelos IDs reais
+            9876543210,
+            # ...
+        ]
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            member: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+        }
+
+        for cargo_id in cargo_ids_permitidos:
+            cargo = guild.get_role(cargo_id)
+            if cargo:
+                overwrites[cargo] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
+
+        canal_farm = await nova_categoria.create_text_channel("📋・meta-farm", overwrites=overwrites)
+        await interaction.followup.send("✅ Canal criado com sucesso.", ephemeral=True)
+
+        embed = discord.Embed(
+            title="📋 Meta de Farm",
+            description="Sua meta de farm é:\n\n- 15 entregas por dia\n- 5 prints organizados\n\nBoa sorte! 🏍️",
+            color=discord.Color.green()
+        )
 
         try:
-            print("➡️ Tentando criar o canal de farm...")
-            canal = await guild.create_text_channel(
-                name=nome_canal,
-                category=categoria,
-                bot_member = guild.me  # o próprio bot
-                overwrites = {
-                        guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                        member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
-                        guild.get_role(CARGO_00_ID): discord.PermissionOverwrite(view_channel=True),
-                        guild.get_role(CARGO_SUBLIDER_ID): discord.PermissionOverwrite(view_channel=True),
-                        guild.get_role(CARGO_GERENTE_FARM_ID): discord.PermissionOverwrite(view_channel=True),
-                        bot_member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, manage_messages=True)
-                        }
-                # Obtém o membro do bot
-                bot_member = interaction.guild.me
-                # Define as permissões personalizadas para o canal
-                overwrites = {
-                        guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                        member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
-                        guild.get_role(CARGO_00_ID): discord.PermissionOverwrite(view_channel=True),
-                        guild.get_role(CARGO_01_ID): discord.PermissionOverwrite(view_channel=True),
-                        guild.get_role(CARGO_02_ID): discord.PermissionOverwrite(view_channel=True),
-                        guild.get_role(CARGO_03_ID): discord.PermissionOverwrite(view_channel=True),
-                        guild.get_role(CARGO_SUBLIDER_ID): discord.PermissionOverwrite(view_channel=True),
-                        guild.get_role(CARGO_GERENTE_FARM_ID): discord.PermissionOverwrite(view_channel=True),
-                        bot_member: discord.PermissionOverwrite(
-                        view_channel=True,
-                        send_messages=True,
-                        read_message_history=True,
-                        embed_links=True,
-                        attach_files=True,
-                        manage_messages=True  # Necessário para fixar mensagens
-                        )
-                        }
-            )
-            print("✅ Canal criado com sucesso.")
+            mensagem = await canal_farm.send(content=member.mention, embed=embed)
+            await mensagem.pin()
+            await member.add_roles(cargo_farm_ok)
+        except discord.Forbidden:
+            await interaction.followup.send("❌ Permissão insuficiente para enviar mensagem na nova pasta.", ephemeral=True)
+            return
 
-            print("➡️ Enviando mensagem da meta...")
-            embed = discord.Embed(
-                title="📋 Meta da Farm",
-                description="""Esta são suas metas de farm diário!
+        canal_original = guild.get_channel(interaction.channel.id)
+        if canal_original:
+            try:
+                await canal_original.set_permissions(member, view_channel=False)
+            except discord.Forbidden:
+                await interaction.followup.send("⚠️ Não consegui ocultar o canal original de você.", ephemeral=True)
 
-✍️ Edite aqui suas metas diárias.""",
-                color=discord.Color.green(),
-                timestamp=discord.utils.utcnow()
-            )
-            embed.set_footer(text=f"Pasta criada para: {apelido}")
-            msg = await canal.send(embed=embed)
-            await msg.pin()
-            print("✅ Mensagem enviada e fixada.")
+        await interaction.followup.send("✅ Tudo pronto! Boa sorte com a farm. 🏍️", ephemeral=True)
 
-            print("➡️ Adicionando cargo FARM OK...")
-            await member.add_roles(guild.get_role(CARGO_FARM_OK_ID))
-            print("✅ Cargo 'Farm OK' adicionado.")
-
-            print("➡️ Ocultando canal original de farm...")
-            canal_farm = guild.get_channel(CANAL_FARM_ORIGINAL_ID)
-            if canal_farm:
-                await canal_farm.set_permissions(member, view_channel=False)
-                print("✅ Canal original ocultado.")
-
-            print("➡️ Enviando log da criação...")
-            canal_logs = guild.get_channel(CANAL_LOGS_ID)
-            if canal_logs:
-                log_embed = discord.Embed(
-                    title="📁 Pasta Farm Criada",
-                    description="Uma nova pasta de farm foi criada!",
-                    color=discord.Color.orange(),
-                    timestamp=discord.utils.utcnow()
-                )
-                log_embed.set_author(name=member.display_name, icon_url=member.display_avatar.url)
-                log_embed.add_field(name="👤 Membro", value=f"```{member.display_name}```", inline=False)
-                log_embed.add_field(name="📂 Canal", value=f"{canal.mention}", inline=False)
-                log_embed.set_footer(text=f"Criado por: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
-                await canal_logs.send(embed=log_embed)
-                print("✅ Log enviado com sucesso.")
-
-            await interaction.response.send_message("✅ Sua pasta foi criada com sucesso!", ephemeral=True)
-
-        except discord.Forbidden as e:
-            print(f"❌ Permissão negada ao tentar: {e}")
-            await interaction.response.send_message("❌ Permissão insuficiente para concluir o processo (ver logs).", ephemeral=True)
-        except Exception as e:
-            print(f"❌ Erro inesperado: {e}")
-            await interaction.response.send_message("❌ Ocorreu um erro ao criar sua pasta farm.", ephemeral=True)
 
 
 # --------------------- EVENTOS E COMANDOS ---------------------
