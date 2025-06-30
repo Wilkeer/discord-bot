@@ -148,7 +148,7 @@ class FarmView(discord.ui.View):
         await interaction.followup.send("✅ Tudo pronto! Boa sorte com a farm. 🏍️", ephemeral=True)
 
 
-# Instâncias fixas das views para evitar erros de escopo
+# Instâncias fixas das views (ANTES DO on_ready)
 registro_view = RegistroView()
 farm_view = FarmView()
 
