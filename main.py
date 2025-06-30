@@ -119,7 +119,28 @@ class FarmView(discord.ui.View):
                         guild.get_role(CARGO_SUBLIDER_ID): discord.PermissionOverwrite(view_channel=True),
                         guild.get_role(CARGO_GERENTE_FARM_ID): discord.PermissionOverwrite(view_channel=True),
                         bot_member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, manage_messages=True)
-                }
+                        }
+                # Obtém o membro do bot
+                bot_member = interaction.guild.me
+                # Define as permissões personalizadas para o canal
+                overwrites = {
+                        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                        member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+                        guild.get_role(CARGO_00_ID): discord.PermissionOverwrite(view_channel=True),
+                        guild.get_role(CARGO_01_ID): discord.PermissionOverwrite(view_channel=True),
+                        guild.get_role(CARGO_02_ID): discord.PermissionOverwrite(view_channel=True),
+                        guild.get_role(CARGO_03_ID): discord.PermissionOverwrite(view_channel=True),
+                        guild.get_role(CARGO_SUBLIDER_ID): discord.PermissionOverwrite(view_channel=True),
+                        guild.get_role(CARGO_GERENTE_FARM_ID): discord.PermissionOverwrite(view_channel=True),
+                        bot_member: discord.PermissionOverwrite(
+                        view_channel=True,
+                        send_messages=True,
+                        read_message_history=True,
+                        embed_links=True,
+                        attach_files=True,
+                        manage_messages=True  # Necessário para fixar mensagens
+                        )
+                        }
             )
             print("✅ Canal criado com sucesso.")
 
