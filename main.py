@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import re
 import os
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -61,9 +62,15 @@ class RegistroModal(discord.ui.Modal, title="Formulário de Registro"):
                 timestamp=discord.utils.utcnow()
             )
             embed.set_author(name=self.member.display_name, icon_url=self.member.display_avatar.url)
-            embed.add_field(name="🧾 Nome", value=f"```{self.nome.value}```", inline=False)
-            embed.add_field(name="🆔 ID", value=f"```{self.id_moto.value}```", inline=False)
-            embed.add_field(name="📞 Telefone", value=f"```{self.telefone.value or 'Não informado'}```", inline=False)
+            embed.add_field(name="🧾 Nome", value=f"
+{self.nome.value}
+", inline=False)
+            embed.add_field(name="🆔 ID", value=f"
+{self.id_moto.value}
+", inline=False)
+            embed.add_field(name="📞 Telefone", value=f"
+{self.telefone.value or 'Não informado'}
+", inline=False)
             embed.set_footer(text=f"Registrado por: {self.registrado_por.display_name}", icon_url=self.registrado_por.display_avatar.url)
             await canal_logs.send(embed=embed)
 
@@ -86,93 +93,120 @@ class FarmView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Criar Pasta Farm", style=discord.ButtonStyle.green, custom_id="botao_farm")
+    @discord.ui.button(label="Criar Pasta Farm", style=discord.ButtonStyle.success, emoji="🌾", custom_id="botao_criar_farm")
     async def criar_farm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True)
-
         guild = interaction.guild
         member = interaction.user
 
-        cargo_farm_ok = discord.utils.get(guild.roles, name="Farm OK")
-        if cargo_farm_ok in member.roles:
-            await interaction.followup.send("❌ Você já tem uma pasta de farm ativa.", ephemeral=True)
+        if guild.get_role(CARGO_FARM_OK_ID) in member.roles:
+            await interaction.response.send_message("🚫 Você já possui uma pasta farm criada.", ephemeral=True)
             return
 
-        categoria_id = 1388315560479035402
-        categoria_mae = guild.get_channel(categoria_id)
-        if not categoria_mae or not isinstance(categoria_mae, discord.CategoryChannel):
-            await interaction.followup.send("❌ Categoria mãe inválida ou não encontrada.", ephemeral=True)
+        apelido = member.nick or member.name
+        # Remove símbolos e acentos indesejados, substitui espaços por hífen, e remove hífens duplicados
+        apelido_formatado = re.sub(r'[^a-zA-Z0-9\-]', '-', apelido)  # troca símbolos por hífen
+        apelido_formatado = re.sub(r'-+', '-', apelido_formatado)    # remove hífens duplicados
+        apelido_formatado = apelido_formatado.strip('-')             # remove hífen no início/fim
+
+        nome_canal = f"📁・farm-{apelido_formatado}".lower()
+
+        categoria = guild.get_channel(CATEGORIA_FARM_ID)
+        if not isinstance(categoria, discord.CategoryChannel):
+            await interaction.response.send_message("❌ Categoria de farm não encontrada ou inválida.", ephemeral=True)
             return
-
-        nome_categoria = f"farm -> {member.display_name.lower()}"
-        nova_categoria = await guild.create_category_channel(nome_categoria, category=categoria_mae)
-
-        cargo_ids_permitidos = [
-            CARGO_00_ID,
-            CARGO_SUBLIDER_ID,
-            CARGO_GERENTE_FARM_ID,
-        ]
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            member: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-        }
-
-        for cargo_id in cargo_ids_permitidos:
-            cargo = guild.get_role(cargo_id)
-            if cargo:
-                overwrites[cargo] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
-
-        canal_farm = await nova_categoria.create_text_channel("📋・meta-farm", overwrites=overwrites)
-
-        embed = discord.Embed(
-            title="📋 Meta de Farm",
-            description="Sua meta de farm é:\n\n- 15 entregas por dia\n- 5 prints organizados\n\nBoa sorte! 🏍️",
-            color=discord.Color.green()
-        )
 
         try:
-            mensagem = await canal_farm.send(content=member.mention, embed=embed)
-            await mensagem.pin()
-            await member.add_roles(cargo_farm_ok)
+            canal = await guild.create_text_channel(
+                name=nome_canal,
+                category=categoria,
+                overwrites={
+                    guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                    member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+                    guild.get_role(CARGO_00_ID): discord.PermissionOverwrite(view_channel=True),
+                    guild.get_role(CARGO_SUBLIDER_ID): discord.PermissionOverwrite(view_channel=True),
+                    guild.get_role(CARGO_GERENTE_FARM_ID): discord.PermissionOverwrite(view_channel=True),
+                }
+            )
+
+            embed = discord.Embed(
+            title="📋 Meta da Farm",
+            description="""Esta são suas metas de farm diário!
+
+            ✍️ Edite aqui suas metas diárias.""",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow()
+            )
+            embed.set_footer(text=f"Pasta criada para: {apelido}")
+            msg = await canal.send(embed=embed)
+            await msg.pin()
+
+            await member.add_roles(guild.get_role(CARGO_FARM_OK_ID))
+
+            canal_farm = guild.get_channel(CANAL_FARM_ORIGINAL_ID)
+            if canal_farm:
+                await canal_farm.set_permissions(member, view_channel=False)
+
+            canal_logs = guild.get_channel(CANAL_LOGS_ID)
+            if canal_logs:
+                log_embed = discord.Embed(
+                    title="📁 Pasta Farm Criada",
+                    description="Uma nova pasta de farm foi criada!",
+                    color=discord.Color.orange(),
+                    timestamp=discord.utils.utcnow()
+                )
+                log_embed.set_author(name=member.display_name, icon_url=member.display_avatar.url)
+                log_embed.add_field(name="👤 Membro", value=f"
+{member.display_name}
+", inline=False)
+                log_embed.add_field(name="📂 Canal", value=f"{canal.mention}", inline=False)
+                log_embed.set_footer(text=f"Criado por: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+                await canal_logs.send(embed=log_embed)
+
+            await interaction.response.send_message("✅ Sua pasta foi criada com sucesso!", ephemeral=True)
+
         except discord.Forbidden:
-            await interaction.followup.send("❌ Permissão insuficiente para enviar mensagem na nova pasta.", ephemeral=True)
-            return
-
-        canal_original = guild.get_channel(interaction.channel.id)
-        if canal_original:
-            try:
-                await canal_original.set_permissions(member, view_channel=False)
-            except discord.Forbidden:
-                await interaction.followup.send("⚠️ Não consegui ocultar o canal original de você.", ephemeral=True)
-
-        await interaction.followup.send("✅ Tudo pronto! Boa sorte com a farm. 🏍️", ephemeral=True)
-
-
-# Instâncias fixas das views (ANTES DO on_ready)
-registro_view = RegistroView()
-farm_view = FarmView()
+            await interaction.response.send_message("❌ Não tenho permissão para criar canal na categoria.", ephemeral=True)
+        except Exception as e:
+            print(f"Erro ao criar canal farm: {e}")
+            await interaction.response.send_message("❌ Ocorreu um erro ao criar sua pasta farm.", ephemeral=True)
 
 
 # --------------------- EVENTOS E COMANDOS ---------------------
 
-# Variáveis globais para as views
-registro_view = None
-farm_view = None
-
 @bot.event
 async def on_ready():
-    global registro_view, farm_view
-
-    registro_view = RegistroView()
-    farm_view = FarmView()
-
-    bot.add_view(registro_view)
-    bot.add_view(farm_view)
-
     print(f"🤖 Bot conectado como {bot.user}")
-
+    bot.add_view(RegistroView())
+    bot.add_view(FarmView())
     try:
         await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
         print("📌 Comandos sincronizados com sucesso.")
     except Exception as e:
         print(f"Erro ao sincronizar comandos: {e}")
+
+
+@bot.tree.command(name="setar", description="Reenvia o formulário de registro", guild=discord.Object(id=GUILD_ID))
+async def setar(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("🚫 Você não tem permissão para usar este comando.", ephemeral=True)
+        return
+
+    embed = discord.Embed(
+        title="Registro Moto Clube",
+        description="📝 Clique no botão abaixo para se registrar no Moto Clube.",
+        color=discord.Color.red()
+    )
+    embed.set_image(url="https://i.imgur.com/RcUNBIf.jpeg")
+    await interaction.response.send_message(embed=embed, view=RegistroView())
+
+
+@bot.tree.command(name="farm", description="Inicia o sistema de farm", guild=discord.Object(id=GUILD_ID))
+async def farm(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="🌾 Sistema de Farm",
+        description="Clique no botão abaixo para criar sua pasta de farm.",
+        color=discord.Color.green()
+    )
+    await interaction.response.send_message(embed=embed, view=FarmView())
+
+bot.run(TOKEN)
