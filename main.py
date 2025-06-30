@@ -87,7 +87,7 @@ class FarmView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Criar Pasta Farm", style=discord.ButtonStyle.success, emoji="🌾", custom_id="botao_criar_farm")
+        @discord.ui.button(label="Criar Pasta Farm", style=discord.ButtonStyle.success, emoji="🌾", custom_id="botao_criar_farm")
     async def criar_farm(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild
         member = interaction.user
@@ -106,7 +106,7 @@ class FarmView(discord.ui.View):
             await interaction.response.send_message("❌ Categoria de farm não encontrada ou inválida.", ephemeral=True)
             return
 
-                try:
+        try:
             print("➡️ Tentando criar o canal de farm...")
             canal = await guild.create_text_channel(
                 name=nome_canal,
