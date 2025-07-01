@@ -152,7 +152,7 @@ class FarmView(discord.ui.View):
             print("[FARM] ✅ Embed enviada e fixada.")
 
             await member.add_roles(guild.get_role(CARGO_FARM_OK_ID))
-            print(f"[FARM] ✅ Cargo FARM OK adicionado para {member}.")
+            print(f"[FARM] ✅ Cargo FARM OK adicionado para {member.display_name}.")
 
             canal_farm = guild.get_channel(CANAL_FARM_ORIGINAL_ID)
             if canal_farm:
